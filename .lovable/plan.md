@@ -1,58 +1,71 @@
-# Why re-saving a PNG makes it bigger — and how to fix it
+# Add a background remover
 
-## What's happening
+A new "Remove background" step on the converter page. It runs on your device by
+default, with an optional higher-quality cloud version when the local result
+isn't clean enough.
 
-Nothing is broken. When you pick PNG output, the app draws your image onto a
-canvas and asks the browser to write a brand-new PNG. The browser's PNG writer
-is fast but not optimised: it doesn't try the smart filtering/compression tricks
-that the tool which created your original file used. Same pixels, same 1024×1024
-size — bigger file (349 KB in, ~500 KB out).
+## How it works for you
 
-This is expected for any lossless re-encode (PNG, BMP, TIFF). It also means that
-right now, converting a file to the format it already is can never be smaller
-than the original.
+1. Upload an image as usual.
+2. Below the preview, a new "Remove background" card appears with a
+   "Remove background" button.
+3. First use downloads a small AI model (~25 MB, cached afterwards) and shows a
+   progress state; after that it takes a few seconds per image.
+4. The result is shown side by side with the original, on a checkerboard
+   backdrop so transparency is visible, plus a "Download PNG" button.
+5. A secondary "Try higher quality" button sends the image to a cloud AI model
+   for a cleaner cutout (better on hair and fine edges). This one uses AI credits
+   and does leave the browser, and the button says so.
+6. A "Use this for conversion" button feeds the cut-out image back into the
+   resize/convert controls, and auto-switches the output format to PNG (or WEBP)
+   since JPG, BMP and GIF can't keep transparency.
 
-## The fix: skip the re-encode when nothing changes
+## Behaviour notes
 
-When the requested output is identical to the input — same format and same
-width/height — return the original file bytes untouched. Then a 1024×1024 PNG in
-gives you the same 349 KB PNG out, and the estimated size shown under the format
-dropdown matches.
-
-Rules for when the passthrough applies:
-
-```text
-input format == output format   AND   requested w/h == original w/h
-  -> reuse original bytes (349 KB stays 349 KB)
-otherwise
-  -> normal canvas re-encode as today
-```
-
-One exception: JPG input to JPG output keeps the re-encode when the quality
-slider is set below 100, since that is a deliberate compression request.
-
-## Also worth adding
-
-- A short muted note under the format dropdown when a lossless format (PNG, BMP,
-  TIFF) is selected: PNG/BMP/TIFF are lossless, so the file can grow compared to
-  the original. Use WEBP or JPG for a smaller file.
-- The estimated-size line already reruns the real conversion, so it will pick up
-  the passthrough automatically and show the true number.
+- Transparency-safe formats are PNG, WEBP and TIFF. If a cut-out is active and a
+  format without alpha is selected, a short note warns that transparency will be
+  flattened to white.
+- The cut-out replaces the working image, not the original upload; "Start over"
+  still clears everything.
+- Errors (model download blocked, cloud AI out of credits or rate limited) show a
+  plain message in the card and leave the original image untouched.
 
 ## Technical details
 
-- `src/lib/image-convert.ts` — add an input-format detector (from MIME type plus
-  filename extension) and an early return in `convertImage` that wraps the
-  original `File` as the result blob, using the real decoded dimensions. Keep the
-  existing `ConvertResult` shape so nothing downstream changes.
-- `src/components/ConvertControls.tsx` — add the lossless-format note next to the
-  existing helper text, only for `png` / `bmp` / `tiff`.
-- No change to `src/routes/index.tsx` state or handlers.
+- New dependency: `@imgly/background-removal` (browser WASM, runs fully
+  client-side). Loaded with a dynamic `import()` inside the click handler so it
+  never enters the server-render bundle, matching how `utif`/`gifenc` are loaded
+  in `src/lib/image-convert.ts`.
+- New `src/lib/background-removal.ts`:
+  - `removeBackgroundLocal(file, onProgress) -> Blob` (PNG with alpha).
+  - `removeBackgroundCloud(file) -> Blob` — posts the file to the server route
+    below and returns the returned PNG.
+- New server route `src/routes/api/remove-background.ts` — accepts multipart
+  `FormData` (image + prompt), forwards it to the Lovable AI Gateway image-edit
+  endpoint with `transparent_background` behaviour (solid white background then
+  alpha), reads `LOVABLE_API_KEY` from `process.env` inside the handler, and
+  returns the resulting PNG bytes. Gateway 402/403 are passed through as terminal
+  errors with their message; 429/5xx get one bounded retry.
+- New `src/components/BackgroundRemover.tsx` — the card: buttons, progress,
+  before/after preview with a CSS checkerboard, download, and "Use this for
+  conversion".
+- `src/routes/index.tsx` — add `workingFile` state (defaults to the uploaded
+  file) that the convert pipeline reads, plus handlers to accept a cut-out and to
+  nudge `format` to PNG when transparency is present. Render
+  `<BackgroundRemover />` between `ImagePreview` and `ConvertControls`.
+- `src/components/ConvertControls.tsx` — add the "transparency will be flattened"
+  note for alpha-less formats when a cut-out is active.
+- Object URLs for cut-out previews are revoked on replace and on reset, following
+  the existing cleanup pattern.
 
 ## Verification
 
-- Load a 1024×1024 PNG, keep size and format: estimated and downloaded size both
-  equal the original 349 KB.
-- Change the width to 512 with PNG: normal re-encode, smaller file.
-- PNG to WEBP at quality 80: clearly smaller than the original.
-- JPG to JPG at quality 70: still re-encodes and shrinks.
+- Upload a photo with a clear subject: local removal produces a PNG with a
+  transparent background, visible against the checkerboard.
+- "Try higher quality" returns a cleaner cutout and reports credit/rate-limit
+  errors clearly instead of failing silently.
+- "Use this for conversion" + PNG output downloads a file that still has
+  transparency; selecting JPG shows the flatten warning and produces a white
+  background.
+- Existing resize/convert/estimate flows still work when background removal is
+  never used.
