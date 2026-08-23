@@ -272,8 +272,8 @@ function Index() {
                 {/* Dimensions */}
                 <div>
                   <Label className="text-sm font-medium">Dimensions</Label>
-                  <div className="mt-3 flex items-end gap-3">
-                    <div className="flex-1">
+                  <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3">
+                    <div className="min-w-0">
                       <Label htmlFor="w" className="mb-1 block text-xs text-muted-foreground">
                         Width (px)
                       </Label>
@@ -290,7 +290,7 @@ function Index() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9"
+                        className="h-9 w-9 shrink-0"
                         onClick={() => setLockAspect((v) => !v)}
                         title={lockAspect ? "Unlock aspect ratio" : "Lock aspect ratio"}
                       >
@@ -301,7 +301,7 @@ function Index() {
                         )}
                       </Button>
                     </div>
-                    <div className="flex-1">
+                    <div className="min-w-0">
                       <Label htmlFor="h" className="mb-1 block text-xs text-muted-foreground">
                         Height (px)
                       </Label>
