@@ -156,11 +156,12 @@ function canvasToBlob(
   });
 }
 
-function encodeGif(
+async function encodeGif(
   rgba: Uint8ClampedArray,
   width: number,
   height: number,
-): Uint8Array {
+): Promise<Uint8Array> {
+  const { GIFEncoder, quantize, applyPalette } = await loadGifenc();
   const data = new Uint8Array(rgba.buffer, rgba.byteOffset, rgba.byteLength);
   const palette = quantize(data, 256);
   const index = applyPalette(data, palette);
@@ -201,13 +202,14 @@ export async function convertImage(
     }
     case "gif": {
       const rgba = canvas.getContext("2d")!.getImageData(0, 0, w, h).data;
-      const bytes = encodeGif(rgba, w, h);
+      const bytes = await encodeGif(rgba, w, h);
       blob = new Blob([bytes.buffer as ArrayBuffer], { type: FORMAT_MIME.gif });
       break;
     }
     case "tiff": {
       const rgba = canvas.getContext("2d")!.getImageData(0, 0, w, h).data;
       const data = new Uint8Array(rgba.buffer, rgba.byteOffset, rgba.byteLength);
+      const UTIF = await loadUTIF();
       const ab = UTIF.encodeImage(data, w, h);
       blob = new Blob([ab], { type: FORMAT_MIME.tiff });
       break;
