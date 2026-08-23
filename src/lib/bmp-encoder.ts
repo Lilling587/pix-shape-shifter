@@ -42,9 +42,9 @@ export function encodeBMP(
     const rowStart = y * width * 4;
     for (let x = 0; x < width; x++) {
       const i = rowStart + x * 4;
-      view.setUint8(offset++, src[i + 2]); // B
-      view.setUint8(offset++, src[i + 1]); // G
-      view.setUint8(offset++, src[i]); // R
+      view.setUint8(offset++, src[i + 2] ?? 0); // B
+      view.setUint8(offset++, src[i + 1] ?? 0); // G
+      view.setUint8(offset++, src[i] ?? 0); // R
     }
     // Row padding to 4-byte boundary.
     const pad = rowSize - width * 3;
