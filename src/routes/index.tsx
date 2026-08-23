@@ -275,6 +275,19 @@ function Index() {
               onReset={reset}
             />
 
+            {/* Background removal */}
+            {file && (
+              <BackgroundRemover
+                file={file}
+                originalUrl={previewUrl}
+                originalName={original.name}
+                cutout={cutout}
+                onCutout={handleCutout}
+                isCutoutInUse={useCutout}
+                onUseForConversion={useCutoutForConversion}
+              />
+            )}
+
             {/* Controls */}
             <ConvertControls
               width={width}
@@ -293,6 +306,7 @@ function Index() {
               isLossy={isLossy}
               estimatedSize={estimatedSize}
               estimating={estimating}
+              flattensTransparency={flattensTransparency}
             />
 
             {/* Result */}
