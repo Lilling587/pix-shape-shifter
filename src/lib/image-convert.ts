@@ -48,6 +48,9 @@ export const FORMAT_MIME: Record<OutputFormat, string> = {
 /** Formats that support lossy quality compression. */
 export const LOSSY_FORMATS: OutputFormat[] = ["jpeg", "webp"];
 
+/** Maximum allowed width or height in pixels. Beyond this, browsers crash trying to allocate canvas memory. */
+export const MAX_DIMENSION = 10000;
+
 export interface ConvertOptions {
   width: number;
   height: number;
