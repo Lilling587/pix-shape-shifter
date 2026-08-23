@@ -101,7 +101,7 @@ function Index() {
           return url;
         });
         setFile(selected);
-        setOriginal(meta);
+        setOriginal({ ...meta, url });
         setWidth(meta.width);
         setHeight(meta.height);
         aspectRef.current = meta.width / meta.height;
