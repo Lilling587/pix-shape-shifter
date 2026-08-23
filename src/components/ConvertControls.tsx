@@ -36,6 +36,8 @@ interface ConvertControlsProps {
   isLossy: boolean;
   estimatedSize: number | null;
   estimating: boolean;
+  /** True when a background-removed image is in use but the format has no alpha. */
+  flattensTransparency?: boolean;
 }
 
 export function ConvertControls({
@@ -55,6 +57,7 @@ export function ConvertControls({
   isLossy,
   estimatedSize,
   estimating,
+  flattensTransparency = false,
 }: ConvertControlsProps) {
   return (
     <div className="rounded-2xl border bg-card p-4 sm:p-6">
@@ -152,6 +155,13 @@ export function ConvertControls({
           {format === "gif" && (
             <p className="mt-2 text-xs text-muted-foreground">
               Note: Animated GIFs will be converted as a single still frame.
+            </p>
+          )}
+          {flattensTransparency && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Note: {FORMAT_LABELS[format]} has no transparency, so the removed
+              background will be filled with white. Choose PNG, WEBP or TIFF to
+              keep it transparent.
             </p>
           )}
           <p className="mt-2 text-xs text-muted-foreground">

@@ -14,6 +14,10 @@ import { DropZone } from "@/components/DropZone";
 import { ImagePreview } from "@/components/ImagePreview";
 import { ConvertControls } from "@/components/ConvertControls";
 import { ConvertResultCard } from "@/components/ConvertResult";
+import { BackgroundRemover } from "@/components/BackgroundRemover";
+
+/** Output formats that keep an alpha channel. */
+const ALPHA_FORMATS: OutputFormat[] = ["png", "webp", "tiff"];
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -50,6 +54,14 @@ function Index() {
   const [original, setOriginal] = useState<OriginalMeta | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // Background-removal result, and whether it feeds the conversion pipeline.
+  const [cutout, setCutout] = useState<{
+    file: File;
+    url: string;
+    size: number;
+  } | null>(null);
+  const [useCutout, setUseCutout] = useState(false);
+
   const [width, setWidth] = useState<string>("");
   const [height, setHeight] = useState<string>("");
   const [lockAspect, setLockAspect] = useState(true);
@@ -68,6 +80,9 @@ function Index() {
   const estimateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const estimateSeq = useRef(0);
 
+  // The image the converter actually reads: the cut-out when it's in use.
+  const workingFile = useCutout && cutout ? cutout.file : file;
+
   // Clean up object URLs on unmount.
   useEffect(() => {
     return () => {
@@ -80,7 +95,7 @@ function Index() {
 
   // Debounced background conversion to estimate the output file size.
   useEffect(() => {
-    if (!file) {
+    if (!workingFile) {
       setEstimatedSize(null);
       setEstimating(false);
       return;
@@ -97,7 +112,7 @@ function Index() {
     const seq = ++estimateSeq.current;
     estimateTimer.current = setTimeout(async () => {
       try {
-        const res = await convertImage(file, {
+        const res = await convertImage(workingFile, {
           width: w,
           height: h,
           format,
@@ -117,7 +132,7 @@ function Index() {
       if (estimateTimer.current) clearTimeout(estimateTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, width, height, format, quality]);
+  }, [workingFile, width, height, format, quality]);
 
   const handleFile = useCallback(
     async (selected: File) => {
@@ -170,19 +185,40 @@ function Index() {
     setPreviewUrl(null);
     if (result) URL.revokeObjectURL(result.url);
     setResult(null);
+    if (cutout) URL.revokeObjectURL(cutout.url);
+    setCutout(null);
+    setUseCutout(false);
     setEstimatedSize(null);
     setEstimating(false);
     setError(null);
   };
 
+  const handleCutout = (blob: Blob) => {
+    const base = (original?.name ?? "image").replace(/\.[^.]+$/, "") || "image";
+    const cutFile = new File([blob], `${base}-no-background.png`, {
+      type: "image/png",
+    });
+    const url = URL.createObjectURL(blob);
+    setCutout((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return { file: cutFile, url, size: blob.size };
+    });
+  };
+
+  const useCutoutForConversion = () => {
+    setUseCutout(true);
+    // Only PNG, WEBP and TIFF keep an alpha channel.
+    if (!ALPHA_FORMATS.includes(format)) setFormat("png");
+  };
+
   const runConvert = async () => {
     const w = Number(width);
     const h = Number(height);
-    if (!file || w < 1 || h < 1) return;
+    if (!workingFile || w < 1 || h < 1) return;
     setConverting(true);
     setError(null);
     try {
-      const res = await convertImage(file, {
+      const res = await convertImage(workingFile, {
         width: w,
         height: h,
         format,
@@ -210,6 +246,7 @@ function Index() {
   })();
 
   const isLossy = LOSSY_FORMATS.includes(format);
+  const flattensTransparency = useCutout && !ALPHA_FORMATS.includes(format);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -238,6 +275,19 @@ function Index() {
               onReset={reset}
             />
 
+            {/* Background removal */}
+            {file && (
+              <BackgroundRemover
+                file={file}
+                originalUrl={previewUrl}
+                originalName={original.name}
+                cutout={cutout}
+                onCutout={handleCutout}
+                isCutoutInUse={useCutout}
+                onUseForConversion={useCutoutForConversion}
+              />
+            )}
+
             {/* Controls */}
             <ConvertControls
               width={width}
@@ -256,6 +306,7 @@ function Index() {
               isLossy={isLossy}
               estimatedSize={estimatedSize}
               estimating={estimating}
+              flattensTransparency={flattensTransparency}
             />
 
             {/* Result */}
