@@ -14,6 +14,10 @@ import { DropZone } from "@/components/DropZone";
 import { ImagePreview } from "@/components/ImagePreview";
 import { ConvertControls } from "@/components/ConvertControls";
 import { ConvertResultCard } from "@/components/ConvertResult";
+import { BackgroundRemover } from "@/components/BackgroundRemover";
+
+/** Output formats that keep an alpha channel. */
+const ALPHA_FORMATS: OutputFormat[] = ["png", "webp", "tiff"];
 
 export const Route = createFileRoute("/")({
   head: () => ({
