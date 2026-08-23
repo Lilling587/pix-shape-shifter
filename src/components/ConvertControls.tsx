@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   FORMAT_LABELS,
+  MAX_DIMENSION,
   formatBytes,
   type OutputFormat,
 } from "@/lib/image-convert";
@@ -70,10 +71,11 @@ export function ConvertControls({
               <Label htmlFor="w" className="mb-1 block text-xs text-muted-foreground">
                 Width (px)
               </Label>
-              <Input
+                            <Input
                 id="w"
                 type="number"
                 min={1}
+                max={MAX_DIMENSION}
                 value={width}
                 onChange={(e) => onWidthChange(e.target.value)}
               />
@@ -98,18 +100,24 @@ export function ConvertControls({
               <Label htmlFor="h" className="mb-1 block text-xs text-muted-foreground">
                 Height (px)
               </Label>
-              <Input
+                            <Input
                 id="h"
                 type="number"
                 min={1}
+                max={MAX_DIMENSION}
                 value={height}
                 onChange={(e) => onHeightChange(e.target.value)}
               />
             </div>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="mt-2 text-xs text-muted-foreground">
             Locking the aspect ratio keeps the image from stretching.
           </p>
+          {(Number(width) > MAX_DIMENSION || Number(height) > MAX_DIMENSION) && (
+            <p className="mt-1 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              Maximum dimension is {MAX_DIMENSION.toLocaleString()}px. Larger values may crash your browser.
+            </p>
+          )}
         </div>
 
         <Separator />
@@ -199,7 +207,7 @@ export function ConvertControls({
           size="lg"
           className="w-full"
           onClick={onConvert}
-          disabled={converting || Number(width) < 1 || Number(height) < 1}
+                    disabled={converting || Number(width) < 1 || Number(height) < 1 || Number(width) > MAX_DIMENSION || Number(height) > MAX_DIMENSION}
         >
           {converting ? (
             <>
