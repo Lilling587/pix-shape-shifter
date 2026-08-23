@@ -82,20 +82,22 @@ function isTiff(file: File): boolean {
 
 async function decodeSource(file: File): Promise<DecodedSource> {
   if (isTiff(file)) {
+    const UTIF = await loadUTIF();
     const buf = await file.arrayBuffer();
     const bytes = new Uint8Array(buf);
-  const ifds = UTIF.decode(bytes);
-  const ifd = ifds[0];
-  if (!ifd) throw new Error("Could not read TIFF file.");
-  UTIF.decodeImage(bytes, ifd, ifds);
-  const rgba = UTIF.toRGBA8(ifd);
-  return {
-    bitmap: null,
-    rgba: new Uint8ClampedArray(rgba),
-    width: ifd.width,
-    height: ifd.height,
-  };
+    const ifds = UTIF.decode(bytes);
+    const ifd = ifds[0];
+    if (!ifd) throw new Error("Could not read TIFF file.");
+    UTIF.decodeImage(bytes, ifd, ifds);
+    const rgba = UTIF.toRGBA8(ifd);
+    return {
+      bitmap: null,
+      rgba: new Uint8ClampedArray(rgba),
+      width: ifd.width,
+      height: ifd.height,
+    };
   }
+
 
   const bitmap = await createImageBitmap(file);
   return {
