@@ -78,16 +78,17 @@ async function decodeSource(file: File): Promise<DecodedSource> {
   if (isTiff(file)) {
     const buf = await file.arrayBuffer();
     const bytes = new Uint8Array(buf);
-    const ifds = UTIF.decode(bytes);
-    if (!ifds.length) throw new Error("Could not read TIFF file.");
-    UTIF.decodeImage(bytes, ifds[0], ifds);
-    const rgba = UTIF.toRGBA8(ifds[0]);
-    return {
-      bitmap: null,
-      rgba: new Uint8ClampedArray(rgba),
-      width: ifds[0].width,
-      height: ifds[0].height,
-    };
+  const ifds = UTIF.decode(bytes);
+  const ifd = ifds[0];
+  if (!ifd) throw new Error("Could not read TIFF file.");
+  UTIF.decodeImage(bytes, ifd, ifds);
+  const rgba = UTIF.toRGBA8(ifd);
+  return {
+    bitmap: null,
+    rgba: new Uint8ClampedArray(rgba),
+    width: ifd.width,
+    height: ifd.height,
+  };
   }
 
   const bitmap = await createImageBitmap(file);
@@ -121,11 +122,10 @@ function drawToCanvas(
     const tmp = document.createElement("canvas");
     tmp.width = source.width;
     tmp.height = source.height;
-    tmp.getContext("2d")!.putImageData(
-      new ImageData(source.rgba, source.width, source.height),
-      0,
-      0,
-    );
+    const tmpCtx = tmp.getContext("2d")!;
+    const imageData = tmpCtx.createImageData(source.width, source.height);
+    imageData.data.set(source.rgba);
+    tmpCtx.putImageData(imageData, 0, 0);
     ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
   }
   return canvas;
