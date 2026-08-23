@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/remove-background")({
 
         const incoming = await request.formData();
         const image = incoming.get("image");
-        if (!(image instanceof File) && !(image instanceof Blob)) {
+        if (!image || typeof image === "string") {
           return new Response("No image was received.", { status: 400 });
         }
 
