@@ -73,14 +73,24 @@ function Index() {
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  const [comparison, setComparison] = useState<
+    Partial<Record<OutputFormat, ConvertResult>>
+  | null>(null);
+  const [comparing, setComparing] = useState(false);
+
   const aspectRef = useRef<number>(1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const comparisonRef = useRef<Partial<Record<OutputFormat, ConvertResult>>>({});
 
   // Clean up object URLs on change/unmount.
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       if (result) URL.revokeObjectURL(result.url);
+      for (const k of Object.keys(comparisonRef.current)) {
+        const r = comparisonRef.current[k as OutputFormat];
+        if (r) URL.revokeObjectURL(r.url);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -143,6 +153,12 @@ function Index() {
     setPreviewUrl(null);
     if (result) URL.revokeObjectURL(result.url);
     setResult(null);
+    for (const k of Object.keys(comparisonRef.current)) {
+      const r = comparisonRef.current[k as OutputFormat];
+      if (r && (!result || r.url !== result.url)) URL.revokeObjectURL(r.url);
+    }
+    comparisonRef.current = {};
+    setComparison(null);
     setError(null);
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -181,6 +197,50 @@ function Index() {
   })();
 
   const isLossy = LOSSY_FORMATS.includes(format);
+
+  const compareAll = async () => {
+    const w = Number(width);
+    const h = Number(height);
+    if (!file || w < 1 || h < 1) return;
+    setComparing(true);
+    setError(null);
+    // Revoke previous comparison URLs (keep the one shown as the result).
+    for (const k of Object.keys(comparisonRef.current)) {
+      const r = comparisonRef.current[k as OutputFormat];
+      if (r && (!result || r.url !== result.url)) URL.revokeObjectURL(r.url);
+    }
+    comparisonRef.current = {};
+    setComparison({});
+    try {
+      const formats = Object.keys(FORMAT_LABELS) as OutputFormat[];
+      for (const f of formats) {
+        try {
+          const res = await convertImage(file, {
+            width: w,
+            height: h,
+            format: f,
+            quality,
+          });
+          comparisonRef.current[f] = res;
+          setComparison({ ...comparisonRef.current });
+        } catch (e) {
+          // Skip a format that fails to encode.
+        }
+      }
+    } finally {
+      setComparing(false);
+    }
+  };
+
+  const useComparison = (f: OutputFormat) => {
+    const res = comparisonRef.current[f];
+    if (!res) return;
+    setFormat(f);
+    setResult((prev) => {
+      if (prev && prev.url !== res.url) URL.revokeObjectURL(prev.url);
+      return res;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -381,6 +441,28 @@ function Index() {
                   )}
                 </Button>
 
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={compareAll}
+                  disabled={
+                    comparing ||
+                    converting ||
+                    Number(width) < 1 ||
+                    Number(height) < 1
+                  }
+                >
+                  {comparing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Comparing…
+                    </>
+                  ) : (
+                    "Compare all formats"
+                  )}
+                </Button>
+
                 {error && (
                   <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                     {error}
@@ -388,6 +470,59 @@ function Index() {
                 )}
               </div>
             </div>
+
+            {/* Format comparison */}
+            {comparison && Object.keys(comparison).length > 0 && (
+              <div className="overflow-hidden rounded-2xl border bg-card">
+                <div className="border-b p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-sm font-medium">Format comparison</h2>
+                    {comparing && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Estimated output at {Number(width) || 0} × {Number(height) || 0}px — sorted smallest first.
+                  </p>
+                </div>
+                <ul className="divide-y">
+                  {(Object.keys(comparison) as OutputFormat[])
+                    .filter((f) => comparison[f])
+                    .sort((a, b) => comparison[a]!.size - comparison[b]!.size)
+                    .map((f) => {
+                      const r = comparison[f]!;
+                      const isCurrent = result?.url === r.url;
+                      return (
+                        <li
+                          key={f}
+                          className="flex items-center gap-3 p-3 sm:p-4"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium">{FORMAT_LABELS[f]}</p>
+                            <p className="text-xs text-muted-foreground tabular-nums">
+                              {formatBytes(r.size)}
+                              {original && (
+                                <span className="ml-1">
+                                  · {Math.round((r.size / original.size) * 100)}% of original
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={isCurrent ? "secondary" : "outline"}
+                            disabled={isCurrent}
+                            onClick={() => useComparison(f)}
+                            className="shrink-0"
+                          >
+                            {isCurrent ? "Selected" : "Use"}
+                          </Button>
+                        </li>
+                      );
+                    })}
+                </ul>
+              </div>
+            )}
 
             {/* Result */}
             {result && (
