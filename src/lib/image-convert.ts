@@ -194,7 +194,7 @@ export async function convertImage(
     case "gif": {
       const rgba = canvas.getContext("2d")!.getImageData(0, 0, w, h).data;
       const bytes = encodeGif(rgba, w, h);
-      blob = new Blob([bytes.buffer], { type: FORMAT_MIME.gif });
+      blob = new Blob([bytes.buffer as ArrayBuffer], { type: FORMAT_MIME.gif });
       break;
     }
     case "tiff": {
