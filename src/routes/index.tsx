@@ -91,7 +91,7 @@ function Index() {
 
   // Debounced background conversion to estimate the output file size.
   useEffect(() => {
-    if (!file) {
+    if (!workingFile) {
       setEstimatedSize(null);
       setEstimating(false);
       return;
@@ -108,7 +108,7 @@ function Index() {
     const seq = ++estimateSeq.current;
     estimateTimer.current = setTimeout(async () => {
       try {
-        const res = await convertImage(file, {
+        const res = await convertImage(workingFile, {
           width: w,
           height: h,
           format,
@@ -128,7 +128,7 @@ function Index() {
       if (estimateTimer.current) clearTimeout(estimateTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, width, height, format, quality]);
+  }, [workingFile, width, height, format, quality]);
 
   const handleFile = useCallback(
     async (selected: File) => {
