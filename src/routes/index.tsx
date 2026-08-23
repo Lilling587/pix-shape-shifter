@@ -62,8 +62,8 @@ function Index() {
   const [original, setOriginal] = useState<OriginalMeta | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const [width, setWidth] = useState<number>(0);
-  const [height, setHeight] = useState<number>(0);
+  const [width, setWidth] = useState<string>("");
+  const [height, setHeight] = useState<string>("");
   const [lockAspect, setLockAspect] = useState(true);
   const [format, setFormat] = useState<OutputFormat>("webp");
   const [quality, setQuality] = useState<number>(80);
@@ -102,8 +102,8 @@ function Index() {
         });
         setFile(selected);
         setOriginal({ ...meta, url });
-        setWidth(meta.width);
-        setHeight(meta.height);
+        setWidth(String(meta.width));
+        setHeight(String(meta.height));
         aspectRef.current = meta.width / meta.height;
       } catch (e) {
         console.error(e);
@@ -114,18 +114,18 @@ function Index() {
   );
 
   const onWidthChange = (value: string) => {
-    const w = Math.max(1, Math.round(Number(value) || 0));
-    setWidth(w);
-    if (lockAspect && aspectRef.current > 0) {
-      setHeight(Math.max(1, Math.round(w / aspectRef.current)));
+    setWidth(value);
+    const w = Number(value);
+    if (lockAspect && aspectRef.current > 0 && w > 0) {
+      setHeight(String(Math.max(1, Math.round(w / aspectRef.current))));
     }
   };
 
   const onHeightChange = (value: string) => {
-    const h = Math.max(1, Math.round(Number(value) || 0));
-    setHeight(h);
-    if (lockAspect && aspectRef.current > 0) {
-      setWidth(Math.max(1, Math.round(h * aspectRef.current)));
+    setHeight(value);
+    const h = Number(value);
+    if (lockAspect && aspectRef.current > 0 && h > 0) {
+      setWidth(String(Math.max(1, Math.round(h * aspectRef.current))));
     }
   };
 
@@ -148,13 +148,15 @@ function Index() {
   };
 
   const runConvert = async () => {
-    if (!file || width < 1 || height < 1) return;
+    const w = Number(width);
+    const h = Number(height);
+    if (!file || w < 1 || h < 1) return;
     setConverting(true);
     setError(null);
     try {
       const res = await convertImage(file, {
-        width,
-        height,
+        width: w,
+        height: h,
         format,
         quality,
       });
@@ -367,7 +369,7 @@ function Index() {
                   size="lg"
                   className="w-full"
                   onClick={runConvert}
-                  disabled={converting || width < 1 || height < 1}
+                  disabled={converting || Number(width) < 1 || Number(height) < 1}
                 >
                   {converting ? (
                     <>
