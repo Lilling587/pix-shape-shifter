@@ -142,7 +142,7 @@ export function ConvertControls({
               </>
             ) : estimatedSize != null ? (
               <>
-                Estimated size:
+                Estimated size: ~
                 <span className="tabular-nums text-foreground">
                   {formatBytes(estimatedSize)}
                 </span>
