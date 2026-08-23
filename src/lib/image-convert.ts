@@ -257,7 +257,14 @@ export async function convertImage(
     case "webp": {
       const q = LOSSY_FORMATS.includes(format) ? Math.min(1, Math.max(0, quality / 100)) : undefined;
       blob = await canvasToBlob(canvas, FORMAT_MIME[format], q ?? 1);
+      if (format === "jpeg") {
+        // Carry the original EXIF block (camera, date, GPS, colour info) over
+        // to the new JPEG, with orientation reset since pixels are upright.
+        const exif = await readExifSegment(file);
+        if (exif) blob = await injectExifIntoJpeg(blob, exif);
+      }
       break;
+
     }
     case "bmp": {
       const rgba = canvas.getContext("2d")!.getImageData(0, 0, w, h).data;
