@@ -1,4 +1,5 @@
 import { encodeBMP } from "./bmp-encoder";
+import { injectExifIntoJpeg, readExifSegment } from "./exif";
 
 // `utif` resolves pako via require() under Node, or via `self.pako` in the
 // browser. These packages are imported dynamically so they stay out of the
