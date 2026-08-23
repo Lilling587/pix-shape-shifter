@@ -416,7 +416,7 @@ function Index() {
                     <Button asChild className="mt-2 w-full">
                       <a href={result.url} download={downloadName}>
                         <Download className="mr-2 h-4 w-4" />
-                        Download {downloadName}
+                        Download
                       </a>
                     </Button>
                   </div>
