@@ -112,15 +112,33 @@ function Index() {
     const seq = ++estimateSeq.current;
     estimateTimer.current = setTimeout(async () => {
       try {
+        // Estimate at reduced resolution to avoid heavy encoding on large images.
+        const targetPixels = w * h;
+        const MAX_SAMPLE_PIXELS = 250_000;
+        let sampleW = w;
+        let sampleH = h;
+        if (targetPixels > MAX_SAMPLE_PIXELS) {
+          const scale = Math.sqrt(MAX_SAMPLE_PIXELS / targetPixels);
+          sampleW = Math.max(1, Math.round(w * scale));
+          sampleH = Math.max(1, Math.round(h * scale));
+        }
+        const samplePixels = sampleW * sampleH;
+
         const res = await convertImage(workingFile, {
-          width: w,
-          height: h,
+          width: sampleW,
+          height: sampleH,
           format,
           quality,
         });
         URL.revokeObjectURL(res.url);
         if (seq !== estimateSeq.current) return; // a newer estimate is running
-        setEstimatedSize(res.size);
+
+        // Scale the sample size up proportionally to the full target dimensions.
+        const estimated =
+          targetPixels > MAX_SAMPLE_PIXELS
+            ? Math.round((res.size / samplePixels) * targetPixels)
+            : res.size;
+        setEstimatedSize(estimated);
       } catch {
         if (seq !== estimateSeq.current) return;
         setEstimatedSize(null);
