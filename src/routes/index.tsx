@@ -5,7 +5,6 @@ import { ImageUp } from "lucide-react";
 import {
   convertImage,
   readImageMeta,
-  FORMAT_LABELS,
   FORMAT_EXTENSIONS,
   LOSSY_FORMATS,
   type OutputFormat,
@@ -14,7 +13,6 @@ import {
 import { DropZone } from "@/components/DropZone";
 import { ImagePreview } from "@/components/ImagePreview";
 import { ConvertControls } from "@/components/ConvertControls";
-import { FormatComparison } from "@/components/FormatComparison";
 import { ConvertResultCard } from "@/components/ConvertResult";
 
 export const Route = createFileRoute("/")({
@@ -62,26 +60,64 @@ function Index() {
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [comparison, setComparison] = useState<
-    Partial<Record<OutputFormat, ConvertResult>>
-  | null>(null);
-  const [comparing, setComparing] = useState(false);
+  // Live estimated output size for the currently selected format/settings.
+  const [estimatedSize, setEstimatedSize] = useState<number | null>(null);
+  const [estimating, setEstimating] = useState(false);
 
   const aspectRef = useRef<number>(1);
-  const comparisonRef = useRef<Partial<Record<OutputFormat, ConvertResult>>>({});
+  const estimateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const estimateSeq = useRef(0);
 
-  // Clean up object URLs on change/unmount.
+  // Clean up object URLs on unmount.
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       if (result) URL.revokeObjectURL(result.url);
-      for (const k of Object.keys(comparisonRef.current)) {
-        const r = comparisonRef.current[k as OutputFormat];
-        if (r) URL.revokeObjectURL(r.url);
-      }
+      if (estimateTimer.current) clearTimeout(estimateTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Debounced background conversion to estimate the output file size.
+  useEffect(() => {
+    if (!file) {
+      setEstimatedSize(null);
+      setEstimating(false);
+      return;
+    }
+    const w = Number(width);
+    const h = Number(height);
+    if (w < 1 || h < 1) {
+      setEstimatedSize(null);
+      setEstimating(false);
+      return;
+    }
+    if (estimateTimer.current) clearTimeout(estimateTimer.current);
+    setEstimating(true);
+    const seq = ++estimateSeq.current;
+    estimateTimer.current = setTimeout(async () => {
+      try {
+        const res = await convertImage(file, {
+          width: w,
+          height: h,
+          format,
+          quality,
+        });
+        URL.revokeObjectURL(res.url);
+        if (seq !== estimateSeq.current) return; // a newer estimate is running
+        setEstimatedSize(res.size);
+      } catch {
+        if (seq !== estimateSeq.current) return;
+        setEstimatedSize(null);
+      } finally {
+        if (seq === estimateSeq.current) setEstimating(false);
+      }
+    }, 350);
+    return () => {
+      if (estimateTimer.current) clearTimeout(estimateTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file, width, height, format, quality]);
 
   const handleFile = useCallback(
     async (selected: File) => {
@@ -134,12 +170,8 @@ function Index() {
     setPreviewUrl(null);
     if (result) URL.revokeObjectURL(result.url);
     setResult(null);
-    for (const k of Object.keys(comparisonRef.current)) {
-      const r = comparisonRef.current[k as OutputFormat];
-      if (r && (!result || r.url !== result.url)) URL.revokeObjectURL(r.url);
-    }
-    comparisonRef.current = {};
-    setComparison(null);
+    setEstimatedSize(null);
+    setEstimating(false);
     setError(null);
   };
 
@@ -160,6 +192,7 @@ function Index() {
         if (prev) URL.revokeObjectURL(prev.url);
         return res;
       });
+      setEstimatedSize(res.size);
     } catch (e) {
       console.error(e);
       setError(
@@ -177,50 +210,6 @@ function Index() {
   })();
 
   const isLossy = LOSSY_FORMATS.includes(format);
-
-  const compareAll = async () => {
-    const w = Number(width);
-    const h = Number(height);
-    if (!file || w < 1 || h < 1) return;
-    setComparing(true);
-    setError(null);
-    // Revoke previous comparison URLs (keep the one shown as the result).
-    for (const k of Object.keys(comparisonRef.current)) {
-      const r = comparisonRef.current[k as OutputFormat];
-      if (r && (!result || r.url !== result.url)) URL.revokeObjectURL(r.url);
-    }
-    comparisonRef.current = {};
-    setComparison({});
-    try {
-      const formats = Object.keys(FORMAT_LABELS) as OutputFormat[];
-      for (const f of formats) {
-        try {
-          const res = await convertImage(file, {
-            width: w,
-            height: h,
-            format: f,
-            quality,
-          });
-          comparisonRef.current[f] = res;
-          setComparison({ ...comparisonRef.current });
-        } catch (e) {
-          // Skip a format that fails to encode.
-        }
-      }
-    } finally {
-      setComparing(false);
-    }
-  };
-
-  const useComparison = (f: OutputFormat) => {
-    const res = comparisonRef.current[f];
-    if (!res) return;
-    setFormat(f);
-    setResult((prev) => {
-      if (prev && prev.url !== res.url) URL.revokeObjectURL(prev.url);
-      return res;
-    });
-  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -262,25 +251,12 @@ function Index() {
               quality={quality}
               setQuality={setQuality}
               onConvert={runConvert}
-              onCompare={compareAll}
               converting={converting}
-              comparing={comparing}
               error={error}
               isLossy={isLossy}
+              estimatedSize={estimatedSize}
+              estimating={estimating}
             />
-
-            {/* Format comparison */}
-            {comparison && Object.keys(comparison).length > 0 && (
-              <FormatComparison
-                comparison={comparison}
-                comparing={comparing}
-                width={width}
-                height={height}
-                original={original}
-                result={result}
-                onUseFormat={useComparison}
-              />
-            )}
 
             {/* Result */}
             {result && (
