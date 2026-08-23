@@ -1,4 +1,4 @@
-import { Download, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/image-convert";
@@ -57,6 +57,3 @@ export function ImagePreview({
   );
 }
 
-// Keep `Download` import referenced for tree-shaking parity with the original
-// module graph (the icon is used elsewhere in the converted result).
-void Download;
