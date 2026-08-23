@@ -7,6 +7,7 @@ import {
   readImageMeta,
   FORMAT_EXTENSIONS,
   LOSSY_FORMATS,
+  MAX_DIMENSION,
   type OutputFormat,
   type ConvertResult,
 } from "@/lib/image-convert";
@@ -180,19 +181,19 @@ function Index() {
     [],
   );
 
-  const onWidthChange = (value: string) => {
+    const onWidthChange = (value: string) => {
     setWidth(value);
     const w = Number(value);
     if (lockAspect && aspectRef.current > 0 && w > 0) {
-      setHeight(String(Math.max(1, Math.round(w / aspectRef.current))));
+      setHeight(String(Math.min(MAX_DIMENSION, Math.max(1, Math.round(w / aspectRef.current)))));
     }
   };
 
-  const onHeightChange = (value: string) => {
+    const onHeightChange = (value: string) => {
     setHeight(value);
     const h = Number(value);
     if (lockAspect && aspectRef.current > 0 && h > 0) {
-      setWidth(String(Math.max(1, Math.round(h * aspectRef.current))));
+      setWidth(String(Math.min(MAX_DIMENSION, Math.max(1, Math.round(h * aspectRef.current)))));
     }
   };
 
