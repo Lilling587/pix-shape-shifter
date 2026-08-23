@@ -1,4 +1,5 @@
 import { encodeBMP } from "./bmp-encoder";
+import { injectExifIntoJpeg, readExifSegment } from "./exif";
 
 // `utif` resolves pako via require() under Node, or via `self.pako` in the
 // browser. These packages are imported dynamically so they stay out of the
@@ -68,6 +69,12 @@ interface DecodedSource {
   bitmap: ImageBitmap | null;
   /** Pre-decoded RGBA for TIFF (browsers can't decode TIFF). */
   rgba: Uint8ClampedArray | null;
+  /** Raw (pre-rotation) size of the RGBA buffer, TIFF only. */
+  rawWidth: number;
+  rawHeight: number;
+  /** EXIF/TIFF orientation (1–8) still to be applied to `rgba`. */
+  orientation: number;
+  /** Upright dimensions. */
   width: number;
   height: number;
 }
@@ -90,23 +97,79 @@ async function decodeSource(file: File): Promise<DecodedSource> {
     if (!ifd) throw new Error("Could not read TIFF file.");
     UTIF.decodeImage(bytes, ifd, ifds);
     const rgba = UTIF.toRGBA8(ifd);
+    // TIFF tag 274 = Orientation; utif does not apply it when decoding.
+    const tag = (ifd as unknown as Record<string, number[] | undefined>)["t274"];
+    const orientation = tag && tag[0] ? tag[0] : 1;
+    const swap = orientation >= 5 && orientation <= 8;
     return {
       bitmap: null,
       rgba: new Uint8ClampedArray(rgba),
-      width: ifd.width,
-      height: ifd.height,
+      rawWidth: ifd.width,
+      rawHeight: ifd.height,
+      orientation,
+      width: swap ? ifd.height : ifd.width,
+      height: swap ? ifd.width : ifd.height,
     };
   }
 
-
-  const bitmap = await createImageBitmap(file);
+  // `from-image` bakes the EXIF orientation into the decoded pixels, so the
+  // output always displays the right way up in every viewer.
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    bitmap = await createImageBitmap(file);
+  }
   return {
     bitmap,
     rgba: null,
+    rawWidth: bitmap.width,
+    rawHeight: bitmap.height,
+    orientation: 1,
     width: bitmap.width,
     height: bitmap.height,
   };
 }
+
+/** Draws a source canvas onto a new upright canvas per EXIF orientation. */
+function applyOrientation(
+  src: HTMLCanvasElement,
+  orientation: number,
+): HTMLCanvasElement {
+  if (orientation <= 1 || orientation > 8) return src;
+  const swap = orientation >= 5;
+  const out = document.createElement("canvas");
+  out.width = swap ? src.height : src.width;
+  out.height = swap ? src.width : src.height;
+  const ctx = out.getContext("2d")!;
+  const { width: w, height: h } = src;
+  switch (orientation) {
+    case 2:
+      ctx.transform(-1, 0, 0, 1, w, 0);
+      break;
+    case 3:
+      ctx.transform(-1, 0, 0, -1, w, h);
+      break;
+    case 4:
+      ctx.transform(1, 0, 0, -1, 0, h);
+      break;
+    case 5:
+      ctx.transform(0, 1, 1, 0, 0, 0);
+      break;
+    case 6:
+      ctx.transform(0, 1, -1, 0, h, 0);
+      break;
+    case 7:
+      ctx.transform(0, -1, -1, 0, h, w);
+      break;
+    case 8:
+      ctx.transform(0, -1, 1, 0, 0, w);
+      break;
+  }
+  ctx.drawImage(src, 0, 0);
+  return out;
+}
+
 
 function drawToCanvas(
   source: DecodedSource,
@@ -126,16 +189,19 @@ function drawToCanvas(
   if (source.bitmap) {
     ctx.drawImage(source.bitmap, 0, 0, canvas.width, canvas.height);
   } else if (source.rgba) {
-    // TIFF path: put raw RGBA onto a temp canvas, then scale-draw to target.
+    // TIFF path: put raw RGBA onto a temp canvas, apply its orientation tag,
+    // then scale-draw to the target size.
     const tmp = document.createElement("canvas");
-    tmp.width = source.width;
-    tmp.height = source.height;
+    tmp.width = source.rawWidth;
+    tmp.height = source.rawHeight;
     const tmpCtx = tmp.getContext("2d")!;
-    const imageData = tmpCtx.createImageData(source.width, source.height);
+    const imageData = tmpCtx.createImageData(source.rawWidth, source.rawHeight);
     imageData.data.set(source.rgba);
     tmpCtx.putImageData(imageData, 0, 0);
-    ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+    const upright = applyOrientation(tmp, source.orientation);
+    ctx.drawImage(upright, 0, 0, canvas.width, canvas.height);
   }
+
   return canvas;
 }
 
@@ -192,7 +258,14 @@ export async function convertImage(
     case "webp": {
       const q = LOSSY_FORMATS.includes(format) ? Math.min(1, Math.max(0, quality / 100)) : undefined;
       blob = await canvasToBlob(canvas, FORMAT_MIME[format], q ?? 1);
+      if (format === "jpeg") {
+        // Carry the original EXIF block (camera, date, GPS, colour info) over
+        // to the new JPEG, with orientation reset since pixels are upright.
+        const exif = await readExifSegment(file);
+        if (exif) blob = await injectExifIntoJpeg(blob, exif);
+      }
       break;
+
     }
     case "bmp": {
       const rgba = canvas.getContext("2d")!.getImageData(0, 0, w, h).data;

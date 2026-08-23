@@ -133,6 +133,12 @@ export function ConvertControls({
               Note: Animated GIFs will be converted as a single still frame.
             </p>
           )}
+          <p className="mt-2 text-xs text-muted-foreground">
+            {format === "jpeg"
+              ? "Photo metadata (EXIF: camera, date, GPS) is copied from the original, and rotation is applied to the pixels."
+              : "Rotation from the original is applied to the pixels. EXIF metadata can only be carried over when the output is JPG."}
+          </p>
+
         </div>
 
         {/* Quality (lossy only) */}
