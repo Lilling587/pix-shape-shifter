@@ -188,16 +188,19 @@ function drawToCanvas(
   if (source.bitmap) {
     ctx.drawImage(source.bitmap, 0, 0, canvas.width, canvas.height);
   } else if (source.rgba) {
-    // TIFF path: put raw RGBA onto a temp canvas, then scale-draw to target.
+    // TIFF path: put raw RGBA onto a temp canvas, apply its orientation tag,
+    // then scale-draw to the target size.
     const tmp = document.createElement("canvas");
-    tmp.width = source.width;
-    tmp.height = source.height;
+    tmp.width = source.rawWidth;
+    tmp.height = source.rawHeight;
     const tmpCtx = tmp.getContext("2d")!;
-    const imageData = tmpCtx.createImageData(source.width, source.height);
+    const imageData = tmpCtx.createImageData(source.rawWidth, source.rawHeight);
     imageData.data.set(source.rgba);
     tmpCtx.putImageData(imageData, 0, 0);
-    ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+    const upright = applyOrientation(tmp, source.orientation);
+    ctx.drawImage(upright, 0, 0, canvas.width, canvas.height);
   }
+
   return canvas;
 }
 
