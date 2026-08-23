@@ -181,19 +181,40 @@ function Index() {
     setPreviewUrl(null);
     if (result) URL.revokeObjectURL(result.url);
     setResult(null);
+    if (cutout) URL.revokeObjectURL(cutout.url);
+    setCutout(null);
+    setUseCutout(false);
     setEstimatedSize(null);
     setEstimating(false);
     setError(null);
   };
 
+  const handleCutout = (blob: Blob) => {
+    const base = (original?.name ?? "image").replace(/\.[^.]+$/, "") || "image";
+    const cutFile = new File([blob], `${base}-no-background.png`, {
+      type: "image/png",
+    });
+    const url = URL.createObjectURL(blob);
+    setCutout((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return { file: cutFile, url, size: blob.size };
+    });
+  };
+
+  const useCutoutForConversion = () => {
+    setUseCutout(true);
+    // Only PNG, WEBP and TIFF keep an alpha channel.
+    if (!ALPHA_FORMATS.includes(format)) setFormat("png");
+  };
+
   const runConvert = async () => {
     const w = Number(width);
     const h = Number(height);
-    if (!file || w < 1 || h < 1) return;
+    if (!workingFile || w < 1 || h < 1) return;
     setConverting(true);
     setError(null);
     try {
-      const res = await convertImage(file, {
+      const res = await convertImage(workingFile, {
         width: w,
         height: h,
         format,
@@ -221,6 +242,7 @@ function Index() {
   })();
 
   const isLossy = LOSSY_FORMATS.includes(format);
+  const flattensTransparency = useCutout && !ALPHA_FORMATS.includes(format);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
