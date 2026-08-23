@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   FORMAT_LABELS,
+  formatBytes,
   type OutputFormat,
 } from "@/lib/image-convert";
 
@@ -30,11 +31,11 @@ interface ConvertControlsProps {
   quality: number;
   setQuality: (quality: number) => void;
   onConvert: () => void;
-  onCompare: () => void;
   converting: boolean;
-  comparing: boolean;
   error: string | null;
   isLossy: boolean;
+  estimatedSize: number | null;
+  estimating: boolean;
 }
 
 export function ConvertControls({
@@ -49,11 +50,11 @@ export function ConvertControls({
   quality,
   setQuality,
   onConvert,
-  onCompare,
   converting,
-  comparing,
   error,
   isLossy,
+  estimatedSize,
+  estimating,
 }: ConvertControlsProps) {
   return (
     <div className="rounded-2xl border bg-card p-4 sm:p-6">
@@ -128,6 +129,26 @@ export function ConvertControls({
               ))}
             </SelectContent>
           </Select>
+
+          {/* Estimated output size, right below the dropdown */}
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            {estimating ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Estimating size…
+              </>
+            ) : estimatedSize != null ? (
+              <>
+                Estimated size:
+                <span className="tabular-nums text-foreground">
+                  {formatBytes(estimatedSize)}
+                </span>
+              </>
+            ) : (
+              "Estimated size will appear here."
+            )}
+          </p>
+
           {format === "gif" && (
             <p className="mt-2 text-xs text-muted-foreground">
               Note: Animated GIFs will be converted as a single still frame.
@@ -138,7 +159,6 @@ export function ConvertControls({
               ? "Photo metadata (EXIF: camera, date, GPS) is copied from the original, and rotation is applied to the pixels."
               : "Rotation from the original is applied to the pixels. EXIF metadata can only be carried over when the output is JPG."}
           </p>
-
         </div>
 
         {/* Quality (lossy only) */}
@@ -178,28 +198,6 @@ export function ConvertControls({
             </>
           ) : (
             "Convert image"
-          )}
-        </Button>
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={onCompare}
-          disabled={
-            comparing ||
-            converting ||
-            Number(width) < 1 ||
-            Number(height) < 1
-          }
-        >
-          {comparing ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Comparing…
-            </>
-          ) : (
-            "Compare all formats"
           )}
         </Button>
 
