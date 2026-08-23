@@ -36,6 +36,8 @@ interface ConvertControlsProps {
   isLossy: boolean;
   estimatedSize: number | null;
   estimating: boolean;
+  /** True when a background-removed image is in use but the format has no alpha. */
+  flattensTransparency?: boolean;
 }
 
 export function ConvertControls({
