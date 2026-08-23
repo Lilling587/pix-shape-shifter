@@ -157,6 +157,13 @@ export function ConvertControls({
               Note: Animated GIFs will be converted as a single still frame.
             </p>
           )}
+          {flattensTransparency && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Note: {FORMAT_LABELS[format]} has no transparency, so the removed
+              background will be filled with white. Choose PNG, WEBP or TIFF to
+              keep it transparent.
+            </p>
+          )}
           <p className="mt-2 text-xs text-muted-foreground">
             {format === "jpeg"
               ? "Photo metadata (EXIF: camera, date, GPS) is copied from the original, and rotation is applied to the pixels."
