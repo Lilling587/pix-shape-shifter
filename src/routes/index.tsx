@@ -50,6 +50,14 @@ function Index() {
   const [original, setOriginal] = useState<OriginalMeta | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // Background-removal result, and whether it feeds the conversion pipeline.
+  const [cutout, setCutout] = useState<{
+    file: File;
+    url: string;
+    size: number;
+  } | null>(null);
+  const [useCutout, setUseCutout] = useState(false);
+
   const [width, setWidth] = useState<string>("");
   const [height, setHeight] = useState<string>("");
   const [lockAspect, setLockAspect] = useState(true);
@@ -67,6 +75,9 @@ function Index() {
   const aspectRef = useRef<number>(1);
   const estimateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const estimateSeq = useRef(0);
+
+  // The image the converter actually reads: the cut-out when it's in use.
+  const workingFile = useCutout && cutout ? cutout.file : file;
 
   // Clean up object URLs on unmount.
   useEffect(() => {
