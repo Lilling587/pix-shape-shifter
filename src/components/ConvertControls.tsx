@@ -57,6 +57,7 @@ export function ConvertControls({
   isLossy,
   estimatedSize,
   estimating,
+  flattensTransparency = false,
 }: ConvertControlsProps) {
   return (
     <div className="rounded-2xl border bg-card p-4 sm:p-6">
