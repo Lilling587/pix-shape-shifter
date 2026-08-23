@@ -1,12 +1,18 @@
-import pako from "pako";
-import UTIF from "utif";
-import { GIFEncoder, quantize, applyPalette } from "gifenc";
 import { encodeBMP } from "./bmp-encoder";
 
 // `utif` resolves pako via require() under Node, or via `self.pako` in the
-// browser. Make it available on the global so browser encode/decode works.
-if (typeof window !== "undefined") {
-  (window as unknown as { pako?: unknown }).pako ??= pako;
+// browser. These packages are imported dynamically so they stay out of the
+// server-side render bundle (they only ever run in browser event handlers).
+async function loadUTIF() {
+  if (typeof window !== "undefined") {
+    const w = window as unknown as { pako?: unknown };
+    if (!w.pako) w.pako = (await import("pako")).default;
+  }
+  return (await import("utif")).default;
+}
+
+async function loadGifenc() {
+  return await import("gifenc");
 }
 
 export type OutputFormat = "jpeg" | "png" | "webp" | "gif" | "bmp" | "tiff";
