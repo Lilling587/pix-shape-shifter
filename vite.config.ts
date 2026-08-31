@@ -27,7 +27,14 @@ export default defineConfig({
           // HTML navigations are NetworkFirst so users always get fresh HTML online and a
           // cached shell when offline. Never cache-first for navigations.
           navigateFallbackDenylist: [/^\/~oauth/],
-          // Allow larger built chunks (e.g. image-encoder libs) to be precached.
+          // The ONNX runtime WASM (~24 MB) and its bundles are only needed for background
+          // removal and are useless without the model weights (downloaded at runtime). Keep
+          // them out of the precache so installs stay lean; they are runtime-cached on first use.
+          globIgnores: [
+            "**/ort-wasm-*.wasm",
+            "**/ort.bundle.min-*.mjs",
+            "**/ort.webgpu.bundle.min-*.mjs",
+          ],
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
           runtimeCaching: [
             {
