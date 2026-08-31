@@ -123,6 +123,14 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  // Register the PWA service worker, but only in the published app (the wrapper
+  // refuses registration in dev, iframe, and Lovable preview contexts). useEffect
+  // only runs in the browser, so SSR is unaffected.
+  useEffect(() => {
+    void import("@/pwa/registerSW").then((m) => m.registerPWA());
+  }, []);
+
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
