@@ -84,15 +84,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Lovable Generated Project" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-            { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@Lovable" },
       { name: "robots", content: "noindex, nofollow" },
+      { name: "theme-color", content: "#1b1f24" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Image converter" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -117,6 +122,14 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Register the PWA service worker, but only in the published app (the wrapper
+  // refuses registration in dev, iframe, and Lovable preview contexts). useEffect
+  // only runs in the browser, so SSR is unaffected.
+  useEffect(() => {
+    void import("@/pwa/registerSW").then((m) => m.registerPWA());
+  }, []);
+
 
   return (
     <QueryClientProvider client={queryClient}>
