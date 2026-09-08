@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "desktop:build": "vite build -c vite.desktop.config.ts",
-    "desktop:package": "vite build -c vite.desktop.config.ts && electron-packager . ImageConverter --platform=linux --arch=x64 --out=electron-release --overwrite --ignore=node_modules --ignore='^/src' --ignore='^/public' --ignore='^/desktop' --ignore='^/electron-release'"
+    "desktop:package": "npm i -D electron @electron/packager && vite build -c vite.desktop.config.ts && npx @electron/packager . ImageConverter --platform=linux --arch=x64 --out=electron-release --overwrite --ignore=node_modules --ignore=\"^/src\" --ignore=\"^/public\" --ignore=\"^/desktop\" --ignore=\"^/electron-release\""
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -76,14 +76,12 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@electron/packager": "^20.3.0",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^2.15.0",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
-    "electron": "^44.3.0",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
