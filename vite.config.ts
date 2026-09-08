@@ -68,6 +68,33 @@ export default defineConfig({
                 cacheableResponse: { statuses: [0, 200] },
               },
             },
+            {
+              // Background-removal runtime: the ONNX WASM binaries and worker bundles are
+              // kept out of the precache (too large), so cache them on first use instead.
+              urlPattern: ({ url }) =>
+                url.origin === self.location.origin &&
+                /\.(?:wasm|mjs)$/i.test(url.pathname),
+              handler: "CacheFirst",
+              options: {
+                cacheName: "bg-removal-runtime",
+                expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] },
+                rangeRequests: true,
+              },
+            },
+            {
+              // The background-removal model weights are downloaded from the imgly CDN on
+              // first use. Cache them for a year so removal keeps working offline.
+              urlPattern: ({ url }) => url.hostname.endsWith("staticimgly.com"),
+              handler: "CacheFirst",
+              options: {
+                cacheName: "bg-removal-model",
+                expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] },
+                rangeRequests: true,
+              },
+            },
+
           ],
         },
       }),
