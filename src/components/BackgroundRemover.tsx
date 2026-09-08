@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Loader2, Scissors, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/image-convert";
+import { isBackgroundRemovalOfflineReady } from "@/lib/bg-removal-prefetch";
 import {
   removeBackgroundCloud,
   removeBackgroundLocal,
   type RemovalProgress,
 } from "@/lib/background-removal";
+
 
 interface BackgroundRemoverProps {
   /** The originally uploaded file. */
