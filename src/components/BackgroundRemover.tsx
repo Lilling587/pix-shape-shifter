@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Download, Loader2, Scissors, Wand2 } from "lucide-react";
+import { Download, Loader2, Scissors, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/image-convert";
 import {
+  removeBackgroundCloud,
   removeBackgroundLocal,
   type RemovalProgress,
 } from "@/lib/background-removal";
@@ -30,7 +31,7 @@ export function BackgroundRemover({
   isCutoutInUse,
   onUseForConversion,
 }: BackgroundRemoverProps) {
-    const [busy, setBusy] = useState<null | "local">(null);
+      const [busy, setBusy] = useState<null | "local" | "cloud">(null);
   const [progress, setProgress] = useState<RemovalProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,8 +44,8 @@ export function BackgroundRemover({
       onCutout(blob);
     } catch (e) {
       console.error(e);
-      setError(
-        
+           setError(
+        "Background removal failed on this device. Try a different image or the higher-quality cloud option.",
       );
     } finally {
       setBusy(null);
@@ -53,6 +54,24 @@ export function BackgroundRemover({
   };
 
   
+
+    const runCloud = async () => {
+    setBusy("cloud");
+    setError(null);
+    try {
+      const blob = await removeBackgroundCloud(file);
+      onCutout(blob);
+    } catch (e) {
+      console.error(e);
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Higher-quality removal failed. Please try again.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const downloadName = `${originalName.replace(/\.[^.]+$/, "") || "image"}-no-background.png`;
 
@@ -71,7 +90,7 @@ export function BackgroundRemover({
         </div>
       </div>
 
-            <div className="mt-4">
+                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <Button onClick={runLocal} disabled={busy !== null}>
           {busy === "local" ? (
             <>
@@ -85,7 +104,25 @@ export function BackgroundRemover({
             </>
           )}
         </Button>
-              </div>
+        <Button variant="outline" onClick={runCloud} disabled={busy !== null}>
+          {busy === "cloud" ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Working…
+            </>
+          ) : (
+            <>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Try higher quality
+            </>
+          )}
+        </Button>
+      </div>
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        Higher quality uses a cloud AI model for cleaner edges on hair and fine
+        detail. It sends the image off your device and uses AI credits.
+      </p>
 
       {busy === "local" && progress && (
         <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
