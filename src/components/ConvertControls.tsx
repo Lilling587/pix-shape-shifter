@@ -232,7 +232,7 @@ export function ConvertControls({
           <p className="mt-2 text-xs text-muted-foreground">
             {isLossy
               ? "Lower quality means smaller file size."
-              : "Quality only applies to JPG and WEBP (lossless formats ignore it)."}
+              : "Quality only applies to JPG, WEBP and AVIF (lossless formats ignore it)."}
           </p>
         </div>
 
