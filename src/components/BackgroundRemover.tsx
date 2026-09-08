@@ -33,9 +33,22 @@ export function BackgroundRemover({
   isCutoutInUse,
   onUseForConversion,
 }: BackgroundRemoverProps) {
-      const [busy, setBusy] = useState<null | "local" | "cloud">(null);
+  const [busy, setBusy] = useState<null | "local" | "cloud">(null);
   const [progress, setProgress] = useState<RemovalProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [offlineReady, setOfflineReady] = useState(false);
+
+  // Read after mount so server and client render the same markup.
+  useEffect(() => {
+    setOfflineReady(isBackgroundRemovalOfflineReady());
+    const id = window.setInterval(
+      () => setOfflineReady(isBackgroundRemovalOfflineReady()),
+      5_000,
+    );
+    return () => window.clearInterval(id);
+  }, []);
+
+
 
   const runLocal = async () => {
     setBusy("local");
