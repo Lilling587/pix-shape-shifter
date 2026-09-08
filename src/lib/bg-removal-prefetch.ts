@@ -21,7 +21,7 @@ export function isBackgroundRemovalOfflineReady(): boolean {
   }
 }
 
-function markDone() {
+export function markBackgroundRemovalOfflineReady() {
   try {
     window.localStorage.setItem(DONE_KEY, "1");
   } catch {
@@ -83,7 +83,7 @@ export function scheduleBackgroundRemovalWarmup() {
       try {
         const { removeBackgroundLocal } = await import("@/lib/background-removal");
         await removeBackgroundLocal(await tinyPng());
-        markDone();
+        markBackgroundRemovalOfflineReady();
       } catch {
         // Silent by design; a later visit retries.
         started = false;

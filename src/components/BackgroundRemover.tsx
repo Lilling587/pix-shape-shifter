@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { Download, Loader2, Scissors, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/image-convert";
-import { isBackgroundRemovalOfflineReady } from "@/lib/bg-removal-prefetch";
+import {
+  isBackgroundRemovalOfflineReady,
+  markBackgroundRemovalOfflineReady,
+} from "@/lib/bg-removal-prefetch";
 import {
   removeBackgroundCloud,
   removeBackgroundLocal,
@@ -56,6 +59,9 @@ export function BackgroundRemover({
     setProgress({ ratio: null, label: "Preparing…" });
     try {
       const blob = await removeBackgroundLocal(file, setProgress);
+      // A successful local run means the model is cached on this device.
+      markBackgroundRemovalOfflineReady();
+      setOfflineReady(true);
       onCutout(blob);
     } catch (e) {
       console.error(e);
