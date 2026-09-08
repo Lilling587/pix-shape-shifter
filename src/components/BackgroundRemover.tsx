@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Loader2, Scissors, Sparkles, Wand2 } from "lucide-react";
+import { Download, Loader2, Scissors, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/image-convert";
 import {
