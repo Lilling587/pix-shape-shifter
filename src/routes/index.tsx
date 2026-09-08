@@ -442,6 +442,7 @@ function Index() {
               original={original}
               previewUrl={previewUrl}
               onReset={reset}
+              transform={transform}
             />
 
             {/* Background removal */}

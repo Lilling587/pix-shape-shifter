@@ -13,13 +13,26 @@ interface ImagePreviewProps {
   };
   previewUrl: string | null;
   onReset: () => void;
+  transform?: {
+    rotate: number;
+    flipH: boolean;
+    flipV: boolean;
+  };
 }
 
 export function ImagePreview({
   original,
   previewUrl,
   onReset,
+  transform,
 }: ImagePreviewProps) {
+  const rotate = transform?.rotate ?? 0;
+  const flipH = transform?.flipH ?? false;
+  const flipV = transform?.flipV ?? false;
+  const hasTransform = rotate !== 0 || flipH || flipV;
+  const cssTransform = hasTransform
+    ? `rotate(${rotate}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`
+    : undefined;
   return (
     <div className="overflow-hidden rounded-2xl border bg-card">
       <div className="grid gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-start">
@@ -28,7 +41,8 @@ export function ImagePreview({
             <img
               src={previewUrl}
               alt={original.name}
-              className="max-h-56 w-auto rounded-md object-contain"
+              className="max-h-56 w-auto rounded-md object-contain transition-transform duration-200"
+              style={cssTransform ? { transform: cssTransform } : undefined}
             />
           )}
         </div>
