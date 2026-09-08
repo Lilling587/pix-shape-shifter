@@ -7,7 +7,6 @@ import {
   markBackgroundRemovalOfflineReady,
 } from "@/lib/bg-removal-prefetch";
 import {
-  removeBackgroundCloud,
   removeBackgroundLocal,
   type RemovalProgress,
 } from "@/lib/background-removal";
