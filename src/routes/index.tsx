@@ -445,6 +445,15 @@ function Index() {
               transform={transform}
             />
 
+            {/* Rotate & flip */}
+            <ImageTransform
+              rotate={transform.rotate}
+              flipH={transform.flipH}
+              flipV={transform.flipV}
+              onRotate={handleRotate}
+              onFlip={handleFlip}
+            />
+
             {/* Background removal */}
             {file && (
               <BackgroundRemover
@@ -469,15 +478,6 @@ function Index() {
                 applied={crop !== null}
               />
             )}
-
-            {/* Rotate & flip */}
-            <ImageTransform
-              rotate={transform.rotate}
-              flipH={transform.flipH}
-              flipV={transform.flipV}
-              onRotate={handleRotate}
-              onFlip={handleFlip}
-            />
 
             {/* Controls */}
             <ConvertControls
