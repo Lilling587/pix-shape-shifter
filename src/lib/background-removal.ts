@@ -30,25 +30,3 @@ export async function removeBackgroundLocal(
     },
   });
 }
-
-  const form = new FormData();
-  form.append(
-    "image",
-    file,
-    file instanceof File ? file.name : "image.png",
-  );
-
-  const res = await fetch("/api/remove-background", {
-    method: "POST",
-    body: form,
-  });
-
-  if (!res.ok) {
-    const message = await res.text().catch(() => "");
-    throw new Error(
-      message.trim() ||
-        "The higher-quality background removal is unavailable right now.",
-    );
-  }
-  return await res.blob();
-}
