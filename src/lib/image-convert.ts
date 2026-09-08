@@ -16,7 +16,18 @@ async function loadGifenc() {
   return await import("gifenc");
 }
 
-export type OutputFormat = "jpeg" | "png" | "webp" | "gif" | "bmp" | "tiff";
+async function loadAvifEncoder() {
+  return (await import("@jsquash/avif/encode")).default;
+}
+
+export type OutputFormat =
+  | "jpeg"
+  | "png"
+  | "webp"
+  | "gif"
+  | "bmp"
+  | "tiff"
+  | "avif";
 
 export const FORMAT_LABELS: Record<OutputFormat, string> = {
   jpeg: "JPG",
@@ -25,6 +36,7 @@ export const FORMAT_LABELS: Record<OutputFormat, string> = {
   gif: "GIF",
   bmp: "BMP",
   tiff: "TIFF",
+  avif: "AVIF",
 };
 
 export const FORMAT_EXTENSIONS: Record<OutputFormat, string> = {
@@ -34,6 +46,7 @@ export const FORMAT_EXTENSIONS: Record<OutputFormat, string> = {
   gif: "gif",
   bmp: "bmp",
   tiff: "tiff",
+  avif: "avif",
 };
 
 export const FORMAT_MIME: Record<OutputFormat, string> = {
@@ -43,13 +56,39 @@ export const FORMAT_MIME: Record<OutputFormat, string> = {
   gif: "image/gif",
   bmp: "image/bmp",
   tiff: "image/tiff",
+  avif: "image/avif",
 };
 
 /** Formats that support lossy quality compression. */
-export const LOSSY_FORMATS: OutputFormat[] = ["jpeg", "webp"];
+export const LOSSY_FORMATS: OutputFormat[] = ["jpeg", "webp", "avif"];
+
+/** All known output formats, in dropdown order. */
+export const ALL_FORMATS = Object.keys(FORMAT_LABELS) as OutputFormat[];
+
+/**
+ * AVIF is always supported — we encode via a WASM encoder (@jsquash/avif)
+ * when the browser lacks native canvas AVIF encoding (Chrome, Safari, etc.).
+ */
+export function isAvifSupported(): boolean {
+  return true;
+}
 
 /** Maximum allowed width or height in pixels. Beyond this, browsers crash trying to allocate canvas memory. */
 export const MAX_DIMENSION = 10000;
+
+export interface TransformOptions {
+  /** Rotation in degrees: 0, 90, 180, or 270. */
+  rotate: number;
+  flipH: boolean;
+  flipV: boolean;
+}
+
+export interface CropRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export interface ConvertOptions {
   width: number;
@@ -57,6 +96,12 @@ export interface ConvertOptions {
   format: OutputFormat;
   /** 0–100, only used for lossy formats. */
   quality: number;
+  /** Crop region in original image pixel coordinates, applied before transform. */
+  crop?: CropRegion;
+  /** Rotation and flip, applied after crop and before resize. */
+  transform?: TransformOptions;
+  /** When true, EXIF metadata is not spliced into JPEG output. */
+  stripExif?: boolean;
 }
 
 export interface ConvertResult {
@@ -174,12 +219,83 @@ function applyOrientation(
 }
 
 
+/**
+ * Draws a source (bitmap or RGBA) onto a target canvas, with optional crop and
+ * transform applied before the final scale.
+ *
+ * Pipeline: decode → EXIF orientation → crop → rotate/flip → scale to target.
+ */
 function drawToCanvas(
   source: DecodedSource,
   width: number,
   height: number,
   flattenAlpha: boolean,
+  crop?: CropRegion,
+  transform?: TransformOptions,
 ): HTMLCanvasElement {
+  // Step 1: Get source pixels onto a full-resolution canvas (with optional crop).
+  let sourceCanvas: HTMLCanvasElement;
+
+  if (source.bitmap) {
+    if (crop) {
+      sourceCanvas = document.createElement("canvas");
+      sourceCanvas.width = crop.width;
+      sourceCanvas.height = crop.height;
+      sourceCanvas
+        .getContext("2d")!
+        .drawImage(
+          source.bitmap,
+          crop.x,
+          crop.y,
+          crop.width,
+          crop.height,
+          0,
+          0,
+          crop.width,
+          crop.height,
+        );
+    } else {
+      sourceCanvas = document.createElement("canvas");
+      sourceCanvas.width = source.width;
+      sourceCanvas.height = source.height;
+      sourceCanvas.getContext("2d")!.drawImage(source.bitmap, 0, 0);
+    }
+  } else if (source.rgba) {
+    // TIFF path: put raw RGBA onto a temp canvas, apply orientation tag.
+    const tmp = document.createElement("canvas");
+    tmp.width = source.rawWidth;
+    tmp.height = source.rawHeight;
+    const tmpCtx = tmp.getContext("2d")!;
+    const imageData = tmpCtx.createImageData(source.rawWidth, source.rawHeight);
+    imageData.data.set(source.rgba);
+    tmpCtx.putImageData(imageData, 0, 0);
+    const upright = applyOrientation(tmp, source.orientation);
+
+    if (crop) {
+      sourceCanvas = document.createElement("canvas");
+      sourceCanvas.width = crop.width;
+      sourceCanvas.height = crop.height;
+      sourceCanvas
+        .getContext("2d")!
+        .drawImage(
+          upright,
+          crop.x,
+          crop.y,
+          crop.width,
+          crop.height,
+          0,
+          0,
+          crop.width,
+          crop.height,
+        );
+    } else {
+      sourceCanvas = upright;
+    }
+  } else {
+    throw new Error("No image data available.");
+  }
+
+  // Step 2: Create target canvas and draw with optional transform.
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(width));
   canvas.height = Math.max(1, Math.round(height));
@@ -189,20 +305,29 @@ function drawToCanvas(
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
-  if (source.bitmap) {
-    ctx.drawImage(source.bitmap, 0, 0, canvas.width, canvas.height);
-  } else if (source.rgba) {
-    // TIFF path: put raw RGBA onto a temp canvas, apply its orientation tag,
-    // then scale-draw to the target size.
-    const tmp = document.createElement("canvas");
-    tmp.width = source.rawWidth;
-    tmp.height = source.rawHeight;
-    const tmpCtx = tmp.getContext("2d")!;
-    const imageData = tmpCtx.createImageData(source.rawWidth, source.rawHeight);
-    imageData.data.set(source.rgba);
-    tmpCtx.putImageData(imageData, 0, 0);
-    const upright = applyOrientation(tmp, source.orientation);
-    ctx.drawImage(upright, 0, 0, canvas.width, canvas.height);
+
+  const hasTransform =
+    transform && (transform.rotate || transform.flipH || transform.flipV);
+
+  if (hasTransform) {
+    const { rotate, flipH, flipV } = transform!;
+    const cw = canvas.width;
+    const ch = canvas.height;
+    // For 90°/270°, the drawing dimensions swap because the coordinate
+    // system is rotated.
+    const swapped = rotate === 90 || rotate === 270;
+    const drawW = swapped ? ch : cw;
+    const drawH = swapped ? cw : ch;
+
+    ctx.save();
+    ctx.translate(cw / 2, ch / 2);
+    if (rotate) ctx.rotate((rotate * Math.PI) / 180);
+    if (flipH) ctx.scale(-1, 1);
+    if (flipV) ctx.scale(1, -1);
+    ctx.drawImage(sourceCanvas, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
+  } else {
+    ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
   }
 
   return canvas;
@@ -245,12 +370,20 @@ export async function convertImage(
   file: File,
   options: ConvertOptions,
 ): Promise<ConvertResult> {
-  const { width, height, format, quality } = options;
+  const { width, height, format, quality, crop, transform, stripExif } =
+    options;
   const source = await decodeSource(file);
 
   // JPEG/BMP have no alpha channel — flatten transparency onto white.
   const flattenAlpha = format === "jpeg" || format === "bmp";
-  const canvas = drawToCanvas(source, width, height, flattenAlpha);
+  const canvas = drawToCanvas(
+    source,
+    width,
+    height,
+    flattenAlpha,
+    crop,
+    transform,
+  );
   const w = canvas.width;
   const h = canvas.height;
 
@@ -261,7 +394,7 @@ export async function convertImage(
     case "webp": {
       const q = LOSSY_FORMATS.includes(format) ? Math.min(1, Math.max(0, quality / 100)) : undefined;
       blob = await canvasToBlob(canvas, FORMAT_MIME[format], q ?? 1);
-      if (format === "jpeg") {
+      if (format === "jpeg" && !stripExif) {
         // Carry the original EXIF block (camera, date, GPS, colour info) over
         // to the new JPEG, with orientation reset since pixels are upright.
         const exif = await readExifSegment(file);
@@ -269,6 +402,13 @@ export async function convertImage(
       }
       break;
 
+    }
+    case "avif": {
+      const imageData = canvas.getContext("2d")!.getImageData(0, 0, w, h);
+      const encodeAvif = await loadAvifEncoder();
+      const ab = await encodeAvif(imageData, { quality });
+      blob = new Blob([ab], { type: FORMAT_MIME.avif });
+      break;
     }
     case "bmp": {
       const rgba = canvas.getContext("2d")!.getImageData(0, 0, w, h).data;

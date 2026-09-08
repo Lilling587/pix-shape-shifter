@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import {
   formatBytes,
   FORMAT_LABELS,
@@ -13,6 +14,7 @@ interface ConvertResultCardProps {
   format: OutputFormat;
   original: { size: number } | null;
   downloadName: string;
+  originalUrl: string | null;
 }
 
 export function ConvertResultCard({
@@ -20,9 +22,18 @@ export function ConvertResultCard({
   format,
   original,
   downloadName,
+  originalUrl,
 }: ConvertResultCardProps) {
   return (
     <div className="overflow-hidden rounded-2xl border bg-card">
+      {originalUrl && (
+        <div className="border-b p-4">
+          <BeforeAfterSlider
+            originalUrl={originalUrl}
+            resultUrl={result.url}
+          />
+        </div>
+      )}
       <div className="grid gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-start">
         <div className="flex items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-2">
           <img
