@@ -1,12 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Loader2, Scissors, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/image-convert";
+import {
+  isBackgroundRemovalOfflineReady,
+  markBackgroundRemovalOfflineReady,
+} from "@/lib/bg-removal-prefetch";
 import {
   removeBackgroundCloud,
   removeBackgroundLocal,
   type RemovalProgress,
 } from "@/lib/background-removal";
+
 
 interface BackgroundRemoverProps {
   /** The originally uploaded file. */
@@ -31,9 +36,22 @@ export function BackgroundRemover({
   isCutoutInUse,
   onUseForConversion,
 }: BackgroundRemoverProps) {
-      const [busy, setBusy] = useState<null | "local" | "cloud">(null);
+  const [busy, setBusy] = useState<null | "local" | "cloud">(null);
   const [progress, setProgress] = useState<RemovalProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [offlineReady, setOfflineReady] = useState(false);
+
+  // Read after mount so server and client render the same markup.
+  useEffect(() => {
+    setOfflineReady(isBackgroundRemovalOfflineReady());
+    const id = window.setInterval(
+      () => setOfflineReady(isBackgroundRemovalOfflineReady()),
+      5_000,
+    );
+    return () => window.clearInterval(id);
+  }, []);
+
+
 
   const runLocal = async () => {
     setBusy("local");
@@ -41,6 +59,9 @@ export function BackgroundRemover({
     setProgress({ ratio: null, label: "Preparing…" });
     try {
       const blob = await removeBackgroundLocal(file, setProgress);
+      // A successful local run means the model is cached on this device.
+      markBackgroundRemovalOfflineReady();
+      setOfflineReady(true);
       onCutout(blob);
     } catch (e) {
       console.error(e);
@@ -121,8 +142,16 @@ export function BackgroundRemover({
 
       <p className="mt-2 text-xs text-muted-foreground">
         Higher quality uses a cloud AI model for cleaner edges on hair and fine
-        detail. It sends the image off your device and uses AI credits.
+        detail. It sends the image off your device and uses AI credits, so it
+        needs an internet connection.
       </p>
+
+      {offlineReady && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Ready to use offline — the on-device model is stored on this device.
+        </p>
+      )}
+
 
       {busy === "local" && progress && (
         <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">

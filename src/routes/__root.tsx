@@ -128,7 +128,13 @@ function RootComponent() {
   // only runs in the browser, so SSR is unaffected.
   useEffect(() => {
     void import("@/pwa/registerSW").then((m) => m.registerPWA());
+    // Quietly download the background-removal model once while online so the
+    // tool also works offline later. No-op in dev/preview and after the first run.
+    void import("@/lib/bg-removal-prefetch").then((m) =>
+      m.scheduleBackgroundRemovalWarmup(),
+    );
   }, []);
+
 
 
   return (
