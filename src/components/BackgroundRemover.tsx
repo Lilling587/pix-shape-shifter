@@ -44,7 +44,7 @@ export function BackgroundRemover({
     } catch (e) {
       console.error(e);
       setError(
-        "Background removal failed on this device. Try the higher-quality option instead.",
+        
       );
     } finally {
       setBusy(null);
