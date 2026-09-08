@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "desktop:build": "vite build -c vite.desktop.config.ts",
+    "desktop:package": "npm i -D electron @electron/packager && vite build -c vite.desktop.config.ts && npx @electron/packager . ImageConverter --platform=linux --arch=x64 --out=electron-release --overwrite --ignore=node_modules --ignore=\"^/src\" --ignore=\"^/public\" --ignore=\"^/desktop\" --ignore=\"^/electron-release\""
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -92,5 +94,6 @@
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5",
     "vite-plugin-pwa": "^1.3.0"
-  }
+  },
+  "main": "electron/main.cjs"
 }
