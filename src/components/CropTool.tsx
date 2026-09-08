@@ -194,12 +194,6 @@ export function CropTool({
     <div className="rounded-2xl border bg-card p-4 sm:p-6">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Crop</p>
-        {applied && (
-          <Button variant="ghost" size="sm" onClick={handleClear}>
-            <X className="mr-1.5 h-3.5 w-3.5" />
-            Reset crop
-          </Button>
-        )}
       </div>
 
       <div
