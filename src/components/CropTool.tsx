@@ -273,9 +273,15 @@ export function CropTool({
       )}
 
       {applied && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Crop applied — dimensions updated to the selected region.
-        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleClear}>
+            <X className="mr-1.5 h-3.5 w-3.5" />
+            Reset crop
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Crop applied — dimensions updated to the selected region.
+          </p>
+        </div>
       )}
     </div>
   );
