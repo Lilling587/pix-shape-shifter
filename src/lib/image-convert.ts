@@ -403,6 +403,13 @@ export async function convertImage(
       break;
 
     }
+    case "avif": {
+      const imageData = canvas.getContext("2d")!.getImageData(0, 0, w, h);
+      const encodeAvif = await loadAvifEncoder();
+      const ab = await encodeAvif(imageData, { quality });
+      blob = new Blob([ab], { type: FORMAT_MIME.avif });
+      break;
+    }
     case "bmp": {
       const rgba = canvas.getContext("2d")!.getImageData(0, 0, w, h).data;
       const ab = encodeBMP(rgba, w, h);
