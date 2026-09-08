@@ -33,7 +33,7 @@ export function DropZone({ onFile }: DropZoneProps) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,.tif,.tiff"
+        accept="image/*,.tif,.tiff,.heic,.heif"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -45,7 +45,7 @@ export function DropZone({ onFile }: DropZoneProps) {
         Drop an image here, or click to choose
       </p>
       <p className="mt-1 text-sm text-muted-foreground">
-        PNG, JPG, WEBP, GIF, BMP or TIFF
+        PNG, JPG, WEBP, GIF, BMP, TIFF or HEIC
       </p>
     </label>
   );

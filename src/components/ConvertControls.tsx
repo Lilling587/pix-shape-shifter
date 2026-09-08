@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Loader2, Lock, Unlock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,11 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
+  ALL_FORMATS,
   FORMAT_LABELS,
   MAX_DIMENSION,
   formatBytes,
+  isAvifSupported,
   type OutputFormat,
 } from "@/lib/image-convert";
 
@@ -39,6 +42,8 @@ interface ConvertControlsProps {
   estimating: boolean;
   /** True when a background-removed image is in use but the format has no alpha. */
   flattensTransparency?: boolean;
+  stripExif: boolean;
+  setStripExif: (value: boolean) => void;
 }
 
 export function ConvertControls({
@@ -59,7 +64,19 @@ export function ConvertControls({
   estimatedSize,
   estimating,
   flattensTransparency = false,
+  stripExif,
+  setStripExif,
 }: ConvertControlsProps) {
+  // AVIF is only shown when the browser can actually encode it. Starts without
+  // AVIF (matching SSR) and adds it on the client if supported — no hydration
+  // mismatch.
+  const [formats, setFormats] = useState<OutputFormat[]>(() =>
+    ALL_FORMATS.filter((f) => f !== "avif"),
+  );
+  useEffect(() => {
+    if (isAvifSupported()) setFormats(ALL_FORMATS);
+  }, []);
+
   return (
     <div className="rounded-2xl border bg-card p-4 sm:p-6">
       <div className="grid gap-5">
@@ -133,7 +150,7 @@ export function ConvertControls({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(Object.keys(FORMAT_LABELS) as OutputFormat[]).map((f) => (
+              {formats.map((f) => (
                 <SelectItem key={f} value={f}>
                   {FORMAT_LABELS[f]}
                 </SelectItem>
@@ -168,14 +185,30 @@ export function ConvertControls({
           {flattensTransparency && (
             <p className="mt-2 text-xs text-muted-foreground">
               Note: {FORMAT_LABELS[format]} has no transparency, so the removed
-              background will be filled with white. Choose PNG, WEBP or TIFF to
-              keep it transparent.
+              background will be filled with white. Choose PNG, WEBP, TIFF or
+              AVIF to keep it transparent.
             </p>
           )}
+
+          {/* Strip EXIF toggle */}
+          <label className="mt-3 flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={stripExif}
+              onChange={(e) => setStripExif(e.target.checked)}
+              className="h-4 w-4 rounded border-border accent-primary"
+            />
+            <span className="text-xs text-muted-foreground">
+              Strip all metadata (EXIF, GPS, camera data)
+            </span>
+          </label>
+
           <p className="mt-2 text-xs text-muted-foreground">
-            {format === "jpeg"
-              ? "Photo metadata (EXIF: camera, date, GPS) is copied from the original, and rotation is applied to the pixels."
-              : "Rotation from the original is applied to the pixels. EXIF metadata can only be carried over when the output is JPG."}
+            {stripExif
+              ? "All metadata will be removed from the output for privacy."
+              : format === "jpeg"
+                ? "Photo metadata (EXIF: camera, date, GPS) is copied from the original, and rotation is applied to the pixels."
+                : "Rotation from the original is applied to the pixels. EXIF metadata can only be carried over when the output is JPG."}
           </p>
         </div>
 
