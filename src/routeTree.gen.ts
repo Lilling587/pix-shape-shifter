@@ -10,43 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiRemoveBackgroundRouteImport } from './routes/api/remove-background'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRemoveBackgroundRoute = ApiRemoveBackgroundRouteImport.update({
-  id: '/api/remove-background',
-  path: '/api/remove-background',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/remove-background': typeof ApiRemoveBackgroundRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/remove-background': typeof ApiRemoveBackgroundRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/remove-background': typeof ApiRemoveBackgroundRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/remove-background'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/remove-background'
-  id: '__root__' | '/' | '/api/remove-background'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiRemoveBackgroundRoute: typeof ApiRemoveBackgroundRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,19 +48,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/remove-background': {
-      id: '/api/remove-background'
-      path: '/api/remove-background'
-      fullPath: '/api/remove-background'
-      preLoaderRoute: typeof ApiRemoveBackgroundRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiRemoveBackgroundRoute: ApiRemoveBackgroundRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

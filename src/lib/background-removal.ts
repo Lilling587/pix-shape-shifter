@@ -31,7 +31,6 @@ export async function removeBackgroundLocal(
   });
 }
 
-export async function removeBackgroundCloud(file: File | Blob): Promise<Blob> {
   const form = new FormData();
   form.append(
     "image",
