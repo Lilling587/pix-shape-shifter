@@ -73,26 +73,6 @@ export function BackgroundRemover({
     }
   };
 
-  
-
-    const runCloud = async () => {
-    setBusy("cloud");
-    setError(null);
-    try {
-      const blob = await removeBackgroundCloud(file);
-      onCutout(blob);
-    } catch (e) {
-      console.error(e);
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Higher-quality removal failed. Please try again.",
-      );
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const downloadName = `${originalName.replace(/\.[^.]+$/, "") || "image"}-no-background.png`;
 
   return (
@@ -104,14 +84,15 @@ export function BackgroundRemover({
         <div className="min-w-0">
           <h2 className="text-sm font-medium">Remove background</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Runs on your device, so the image stays private. The first run
-            downloads a small model (about 25 MB) and is cached after that.
+            Runs entirely on your device, so the image never leaves it. The first
+            run downloads a small model (about 25 MB) and keeps it stored, so it
+            works with no internet after that.
           </p>
         </div>
       </div>
 
-                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <Button onClick={runLocal} disabled={busy !== null}>
+      <div className="mt-4">
+        <Button className="w-full sm:w-auto" onClick={runLocal} disabled={busy !== null}>
           {busy === "local" ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -124,26 +105,9 @@ export function BackgroundRemover({
             </>
           )}
         </Button>
-        <Button variant="outline" onClick={runCloud} disabled={busy !== null}>
-          {busy === "cloud" ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Working…
-            </>
-          ) : (
-            <>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Try higher quality
-            </>
-          )}
-        </Button>
       </div>
 
-      <p className="mt-2 text-xs text-muted-foreground">
-        Higher quality uses a cloud AI model for cleaner edges on hair and fine
-        detail. It sends the image off your device and uses AI credits, so it
-        needs an internet connection.
-      </p>
+
 
       {offlineReady && (
         <p className="mt-2 text-xs text-muted-foreground">
