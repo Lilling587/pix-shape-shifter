@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ImageUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -7,8 +7,7 @@ interface DropZoneProps {
 }
 
 export function DropZone({ onFile }: DropZoneProps) {
-  const [dragging, setDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+    const [dragging, setDragging] = useState(false);
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -30,8 +29,7 @@ export function DropZone({ onFile }: DropZoneProps) {
         dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
       )}
     >
-      <input
-        ref={inputRef}
+            <input
         type="file"
         accept="image/*,.tif,.tiff,.heic,.heif"
         className="hidden"
