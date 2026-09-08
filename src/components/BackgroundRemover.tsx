@@ -121,8 +121,16 @@ export function BackgroundRemover({
 
       <p className="mt-2 text-xs text-muted-foreground">
         Higher quality uses a cloud AI model for cleaner edges on hair and fine
-        detail. It sends the image off your device and uses AI credits.
+        detail. It sends the image off your device and uses AI credits, so it
+        needs an internet connection.
       </p>
+
+      {offlineReady && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Ready to use offline — the on-device model is stored on this device.
+        </p>
+      )}
+
 
       {busy === "local" && progress && (
         <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
