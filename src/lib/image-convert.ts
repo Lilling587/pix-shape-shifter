@@ -16,6 +16,10 @@ async function loadGifenc() {
   return await import("gifenc");
 }
 
+async function loadAvifEncoder() {
+  return (await import("@jsquash/avif/encode")).default;
+}
+
 export type OutputFormat =
   | "jpeg"
   | "png"
@@ -62,20 +66,11 @@ export const LOSSY_FORMATS: OutputFormat[] = ["jpeg", "webp", "avif"];
 export const ALL_FORMATS = Object.keys(FORMAT_LABELS) as OutputFormat[];
 
 /**
- * Synchronously checks whether the browser can encode AVIF via canvas.toDataURL.
- * Returns false during SSR (no document) and on browsers without AVIF encoding
- * (e.g. Safari), so the format dropdown can hide AVIF when unsupported.
+ * AVIF is always supported — we encode via a WASM encoder (@jsquash/avif)
+ * when the browser lacks native canvas AVIF encoding (Chrome, Safari, etc.).
  */
 export function isAvifSupported(): boolean {
-  if (typeof document === "undefined") return false;
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = 1;
-    canvas.height = 1;
-    return canvas.toDataURL("image/avif").startsWith("data:image/avif");
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 /** Maximum allowed width or height in pixels. Beyond this, browsers crash trying to allocate canvas memory. */
@@ -396,8 +391,7 @@ export async function convertImage(
   switch (format) {
     case "jpeg":
     case "png":
-    case "webp":
-    case "avif": {
+    case "webp": {
       const q = LOSSY_FORMATS.includes(format) ? Math.min(1, Math.max(0, quality / 100)) : undefined;
       blob = await canvasToBlob(canvas, FORMAT_MIME[format], q ?? 1);
       if (format === "jpeg" && !stripExif) {
